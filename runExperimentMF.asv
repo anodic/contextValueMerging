@@ -27,8 +27,6 @@ varsIds{16} = 'DominantEmotion'; varsIds{17} = 'Mood'; varsIds{18} = 'Physical';
 varsIds{19} = 'Decision'; varsIds{20} = 'Interaction';
 % Ante: 9 - 20 so kontekst - potentialy.
 
-cntxCategorySizes  = [4,3,4,3,5,7,7,7,3,2,2,2];
-
 numOfFeatures = 1;
 numOfEpochs = 2;
 learningRate = 0.01;
@@ -42,14 +40,14 @@ initValue = 0.03;
 testSetName = 'LDOScontextTEST.xlsx';
 trainSetName = 'LDOScontextTRAINnoLAST.xlsx';
 
-testSet = xlsread(testSetName);
-trainSet = xlsread(trainSetName);
+testSet = xlsread(fullfile(dataPath, testSetName));
+trainSet = xlsread(fullfile(dataPath, trainSetName));
 
 
 %% Matrix factorization
 
 % calculate biases
-[globalBias, userBiases, itemBiases] = calculateBiases( trainSet, cntxCategorySizes);
+[globalBias, userBiases, itemBiases] = calculateBiases( trainSet );
 
 % training
 pUF = zeros(max(trainSet(:,1)),numOfFeatures);
