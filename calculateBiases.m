@@ -49,5 +49,6 @@ for contextIndex = 1 : 12
 end
 
 contextUserBiases = contextUserBiases- globalBias;
+userBiases = userBiases - globalBias;
 
 end
