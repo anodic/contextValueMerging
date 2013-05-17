@@ -44,13 +44,12 @@ for contextIndex = 1 : 12
                 contextUserBiases(contextIndex,usrIndex,cntxValueIndex) = sumOfRatings/length(hitIndexes);
             end
             
-            contextUserBiases(contextIndex,usrIndex,cntxValueIndex) = contextUserBiases(contextIndex,usrIndex,cntxValueIndex)-globalBias-userBiases(usrIndex);
             
         end
     end
 end
 
-
+contextUserBiases = contextUserBiases- globalBias;
 
 
 end

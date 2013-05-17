@@ -32,19 +32,18 @@ varsIds{19} = 'Decision'; varsIds{20} = 'Interaction';
 
 cntxCategorySizes  = [4,3,4,3,5,7,7,7,3,2,2,2];
 
-numOfFeatures = 10;
+numOfFeatures = 5;
 numOfEpochs = 50;
 learningRate = 0.007;
-lRateItemBias = 0.04;
-lRateUserBias = 0.001;
-lRatecontextBias = 0.007;
-K = 0.005;
+lRateItemBias = 0.01;
+lRateUserBias = 0.0001;
+K = 0.0005;
 initValue = 0.03;
 
 
 %% Load data
-testSetName = 'LDOScomodaTrainOriginal1.xlsx';%'LDOScontextTEST.xlsx';
-trainSetName = 'LDOScomodaTrainOriginal1.xlsx';%'LDOScontextTRAINnoLAST.xlsx';
+testSetName = 'LDOScontextTEST.xlsx';
+trainSetName = 'LDOScontextTRAINnoLAST.xlsx';
 
 testSet = xlsread(testSetName);
 trainSet = xlsread(trainSetName);
@@ -53,50 +52,51 @@ trainSet = xlsread(trainSetName);
 %% Matrix factorization
 
 % do context
-doContext = 1;
+doContext = 1; 
 
 % calculate biases
-[contextUserBiases,globalBias, userBiases, itemBiases] = calculateBiases( trainSet, cntxCategorySizes);
+[contextUserBiases,globalBias, userBiases, itemBiases] = calculateBiases_single( trainSet, cntxCategorySizes);
 
 % training
 pUF = zeros(max(trainSet(:,1)),numOfFeatures);
 qIF = zeros(max(trainSet(:,2)),numOfFeatures);
 
-% context = 12;
+context = 12;
 
 count2 = 1;
 for f = 1: numOfFeatures
-    
+   
     pUF (:,f) = initValue;
     qIF (:,f) = initValue;
     for e = 1:numOfEpochs
-        
+                
         for i = 1:size(trainSet,1)
             count = 1;
             errors = [];
             userID = trainSet(i,1);
             itemID = trainSet(i,2);
             trueRating = trainSet(i,3);
-            contextValues = trainSet(i,4:5);
+            contextValue = trainSet(i,3+context);
             
-            % get contextualized biases
-            for cb = 1:length(contextValues)
-                if contextValues(cb)==0
-                    contextBiases(cb) = 0;
-                else
-                    contextBiases(cb) = contextUserBiases(cb,userID,contextValues(cb));
-                end
+            if itemID == 2205
+                ante = 4
             end
             
             
-            
-            [estimatedRating] = predictScore(pUF(userID,:), qIF(itemID,:),...
-                globalBias, userBiases(userID), itemBiases(itemID),contextBiases);
-            
-            
+            if contextValue == 0 || doContext==0
+                
+                [estimatedRating] = predictScore_single(pUF(userID,:), qIF(itemID,:),...
+                    globalBias, userBiases(userID), itemBiases(itemID));
+                
+            else
+                
+                [estimatedRating] = predictScore_single(pUF(userID,:), qIF(itemID,:),...
+                    globalBias, contextUserBiases(context,userID,contextValue), itemBiases(itemID));
+                
+            end
             error = trueRating - estimatedRating;
             
-            
+                          
             errors(count) = error;
             count = count+1;
             
@@ -107,26 +107,10 @@ for f = 1: numOfFeatures
             pUF(userID,f) = tempUF + (error * tempIF - K * tempUF) * learningRate;
             qIF(itemID,f) = tempIF + (error * tempUF - K * tempIF) * learningRate;
             
-            userBiases(userID) = userBiases(userID) + lRateUserBias * (error-K*userBiases(userID));
-            itemBiases(itemID) = itemBiases(itemID) + lRateItemBias * (error-K*itemBiases(itemID));
-            
-            for cb = 1:length(contextValues)
-               
-                if contextValues(cb)~=0
-                    contextUserBiases(cb,userID,contextValues(cb)) = contextUserBiases(cb,userID,contextValues(cb)) + lRatecontextBias * (error-K*contextUserBiases(cb,userID,contextValues(cb)));
-                end
-                    
-                
-            end
-            
-            
-            
-            
-            
-            
+                        
         end
         errors = errors.^2;
-        overallError = sqrt(sum(errors)/length(errors));
+        overallError = sum(errors)/length(errors);
         overallErrors(count2) = overallError;
         count2 = count2+1;
         if count2 == 1000
@@ -139,29 +123,27 @@ for f = 1: numOfFeatures
 end
 
 
-figure, plot(overallErrors)
+plot(overallErrors)
 
 
 % validating
 for i = 1: size(testSet,1)
     userID = testSet(i,1);
     itemID = testSet(i,2);
-    contextValues = trainSet(i,4:5);
-    % get contextualized biases
-    for cb = 1:length(contextValues)
-        if contextValues(cb)==0
-            contextBiases(cb) = 0;
-        else
-            contextBiases(cb) = contextUserBiases(cb,userID,contextValues(cb));
-        end
+    trueRating = testSet(i,3);
+    contextValue = trainSet(i,3+context);
+    
+    if contextValue == 0 || doContext==0
+        
+        [estimatedRating] = predictScore_single(pUF(userID,:), qIF(itemID,:),...
+            globalBias, userBiases(userID), itemBiases(itemID));
+        
+    else
+        
+        [estimatedRating] = predictScore_single(pUF(userID,:), qIF(itemID,:),...
+            globalBias, contextUserBiases(context,userID,contextValue), itemBiases(itemID));
+        
     end
-    
-    
-    
-    [estimatedRating] = predictScore(pUF(userID,:), qIF(itemID,:),...
-        globalBias, userBiases(userID), itemBiases(itemID),contextBiases);
-    
-    
     
     ratingsDifferences(i) = trueRating - estimatedRating;
     
