@@ -32,18 +32,31 @@ varsIds{19} = 'Decision'; varsIds{20} = 'Interaction';
 
 cntxCategorySizes  = [4,3,4,3,5,7,7,7,3,2,2,2];
 
-numOfFeatures = 5;
-numOfEpochs = 50;
-learningRate = 0.007;
-lRateItemBias = 0.01;
-lRateUserBias = 0.0001;
-K = 0.0005;
+numOfFeatures = 10;
+numOfEpochs = 300;
+learningRate = 0.00001;
+lRateItemBias = 0.0001;
+lRateUserBias = 0.00001;
+lRatecontextBias = 0.0001;
+K = 0.005;
 initValue = 0.03;
+
+% numOfFeatures = 10;
+% numOfEpochs = 300;
+% learningRate = 0.007;
+% lRateItemBias = 0.007;
+% lRateUserBias = 0.007;
+% lRatecontextBias = 0.001;
+% K = 0.05;
+% initValue = 0.03;
 
 
 %% Load data
-testSetName = 'LDOScontextTEST.xlsx';
-trainSetName = 'LDOScontextTRAINnoLAST.xlsx';
+testSetName = 'LDOScomodaTestOriginal1.xlsx';
+trainSetName = 'LDOScomodaTrainOriginal1.xlsx';
+
+% testSetName = 'LDOScontextTEST.xlsx';
+% trainSetName = 'LDOScontextTRAINnoLAST.xlsx';
 
 testSet = xlsread(testSetName);
 trainSet = xlsread(trainSetName);
@@ -56,14 +69,17 @@ doContext = 1;
 
 % calculate biases
 [contextUserBiases,globalBias, userBiases, itemBiases] = calculateBiases_single( trainSet, cntxCategorySizes);
+%[contextUserBiases,globalBias, userBiases, itemBiases] = setupBiases_single( trainSet, cntxCategorySizes);
 
 % training
 pUF = zeros(max(trainSet(:,1)),numOfFeatures);
 qIF = zeros(max(trainSet(:,2)),numOfFeatures);
 
-context = 12;
+context = 3;
 
 count2 = 1;
+count21 = 1;
+count47 = 1;
 for f = 1: numOfFeatures
    
     pUF (:,f) = initValue;
@@ -78,9 +94,9 @@ for f = 1: numOfFeatures
             trueRating = trainSet(i,3);
             contextValue = trainSet(i,3+context);
             
-            if itemID == 2205
-                ante = 4
-            end
+%             if itemID == 2205
+%                 ante = 4
+%             end
             
             
             if contextValue == 0 || doContext==0
@@ -94,6 +110,9 @@ for f = 1: numOfFeatures
                     globalBias, contextUserBiases(context,userID,contextValue), itemBiases(itemID));
                 
             end
+            
+            %fixedRating= fixRating(estimatedRating);
+            
             error = trueRating - estimatedRating;
             
                           
@@ -106,6 +125,27 @@ for f = 1: numOfFeatures
                         
             pUF(userID,f) = tempUF + (error * tempIF - K * tempUF) * learningRate;
             qIF(itemID,f) = tempIF + (error * tempUF - K * tempIF) * learningRate;
+            
+            
+            userBiases(userID) = userBiases(userID) + lRateUserBias * (error-K*userBiases(userID));
+            itemBiases(itemID) = itemBiases(itemID) + lRateItemBias * (error-K*itemBiases(itemID));
+            if userID == 21
+                user21Biases(count21) = userBiases(21);
+                count21 = count21+1;
+            end
+            if itemID == 47
+                item47Biases(count47) = itemBiases(47);
+                
+                count47 = count47+1;
+            end
+            
+            
+            
+            if contextValue ~= 0
+                contextUserBiases(context,userID,contextValue) = contextUserBiases(context,userID,contextValue)  + lRatecontextBias * (error-K*contextUserBiases(context,userID,contextValue));
+               
+            end
+            
             
                         
         end
@@ -124,8 +164,8 @@ end
 
 
 plot(overallErrors)
-
-
+figure, plot(user21Biases)
+figure, plot(item47Biases)
 % validating
 for i = 1: size(testSet,1)
     userID = testSet(i,1);
@@ -145,7 +185,10 @@ for i = 1: size(testSet,1)
         
     end
     
-    ratingsDifferences(i) = trueRating - estimatedRating;
+    fixedRating= fixRating(estimatedRating);
+            
+    
+    ratingsDifferences(i) = trueRating - fixedRating;
     
     
 end
