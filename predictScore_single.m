@@ -1,4 +1,4 @@
-function [estimatedScore] = predictScore(p,q, globalBias, userBias, itemBias)
+function [estimatedScore] = predictScore_single(p,q, globalBias, userBias, itemBias)
 
 estimatedScore = globalBias + userBias + itemBias + p*q';
 
